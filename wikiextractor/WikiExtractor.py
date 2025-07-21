@@ -278,7 +278,7 @@ def decode_open(filename, mode='rt', encoding='utf-8'):
         return open(filename, mode, encoding=encoding)
 
 
-def collect_pages(text):
+def collect_pages(text, get_misc):
     """
     :param text: the text of a wikipedia file dump.
     """
@@ -299,6 +299,7 @@ def collect_pages(text):
         if not m:
             continue
         tag = m.group(2)
+        #print(tag, line)
         if tag == 'page':
             page = []
             redirect = False
@@ -324,10 +325,17 @@ def collect_pages(text):
             page.append(line)
         elif tag == '/page':
             colon = title.find(':')
-            if (colon < 0 or (title[:colon] in acceptedNamespaces) and id != last_id and
-                    not redirect and not title.startswith(templateNamespace)):
-                yield (id, revid, title, page)
-                last_id = id
+            if get_misc:
+                if (not (colon < 0 or (title[:colon] in acceptedNamespaces)) and id != last_id and
+                        not redirect and not title.startswith(templateNamespace)):
+                    yield (id, revid, title, page)
+                    last_id = id
+            else:
+                if (colon < 0 or (title[:colon] in acceptedNamespaces) and id != last_id and
+                        not redirect and not title.startswith(templateNamespace)):
+                    yield (id, revid, title, page)
+                    last_id = id
+                
             id = ''
             revid = ''
             page = []
@@ -336,7 +344,7 @@ def collect_pages(text):
 
 
 def process_dump(input_file, template_file, out_file, file_size, file_compress,
-                 process_count, html_safe, expand_templates=True):
+                 process_count, html_safe, expand_templates=True, get_misc=False):
     """
     :param input_file: name of the wikipedia dump file; '-' to read from stdin
     :param template_file: optional file with template definitions.
@@ -443,7 +451,7 @@ def process_dump(input_file, template_file, out_file, file_size, file_compress,
     # than concatenation
 
     ordinal = 0  # page count
-    for id, revid, title, page in collect_pages(input):
+    for id, revid, title, page in collect_pages(input, get_misc):
         job = (id, revid, urlbase, title, page, ordinal)
         jobs_queue.put(job)  # goes to any available extract_process
         ordinal += 1
@@ -565,6 +573,8 @@ def main():
     default_process_count = cpu_count() - 1
     parser.add_argument("--processes", type=int, default=default_process_count,
                         help="Number of processes to use (default %(default)s)")
+    groupP.add_argument("--get_misc", action="store_true",
+                        help="get other pages, including help pages, comments, etc.")
 
     groupS = parser.add_argument_group('Special')
     groupS.add_argument("-q", "--quiet", action="store_true",
@@ -637,7 +647,7 @@ def main():
             return
 
     process_dump(input_file, args.templates, output_path, file_size,
-                 args.compress, args.processes, args.html_safe, not args.no_templates)
+                 args.compress, args.processes, args.html_safe, not args.no_templates, comments=args.get_misc)
 
 if __name__ == '__main__':
     main()
