@@ -647,7 +647,7 @@ def main():
             return
 
     process_dump(input_file, args.templates, output_path, file_size,
-                 args.compress, args.processes, args.html_safe, not args.no_templates, comments=args.get_misc)
+                 args.compress, args.processes, args.html_safe, not args.no_templates, get_misc=args.get_misc)
 
 if __name__ == '__main__':
     main()
