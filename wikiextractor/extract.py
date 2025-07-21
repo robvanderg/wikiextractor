@@ -26,6 +26,20 @@ from urllib.parse import quote as urlencode
 from html.entities import name2codepoint
 import logging
 import time
+import sys
+
+#import warnings
+#import traceback
+
+#def custom_warn(message, category, filename, lineno, file=None, line=None):
+#    print(f"{filename}:{lineno}: {category.__name__}: {message}")
+#    traceback.print_stack()
+
+#warnings.showwarning = custom_warn
+#warnings.simplefilter("always")
+
+
+#warnings.simplefilter("always")  # Show all warnings
 
 # ----------------------------------------------------------------------
 
@@ -902,7 +916,6 @@ class TemplateArg():
 
 substWords = 'subst:|safesubst:'
 
-
 class Extractor():
     """
     An extraction task on a article.
@@ -1000,7 +1013,7 @@ class Extractor():
                 self.recursion_exceeded_2_errs,
                 self.recursion_exceeded_3_errs)
         if any(errs):
-            logging.warn("Template errors in article '%s' (%s): title(%d) recursion(%d, %d, %d)",
+            logging.warning("Template errors in article '%s' (%s): title(%d) recursion(%d, %d, %d)",
                          self.title, self.id, *errs)
 
     # ----------------------------------------------------------------------
@@ -1045,6 +1058,7 @@ class Extractor():
         # look for matching {{...}}
         for s, e in findMatchingBraces(wikitext, 2):
             res += wikitext[cur:s] + self.expandTemplate(wikitext[s + 2:e - 2])
+            #print(wikitext[cur:s] + self.expandTemplate(wikitext[s + 2:e - 2]), file=sys.stderr)
             cur = e
         # leftover
         res += wikitext[cur:]
@@ -1604,13 +1618,13 @@ class Infix():
 
 ROUND = Infix(lambda x, y: round(x, y))
 
-
 def sharp_expr(expr):
     try:
         expr = re.sub('=', '==', expr)
         expr = re.sub('mod', '%', expr)
         expr = re.sub('\bdiv\b', '/', expr)
         expr = re.sub('\bround\b', '|ROUND|', expr)
+        #print(expr, eval(expr), type(expr), type(eval(expr)), file=sys.stderr)
         return str(eval(expr))
     except:
         return '<span class="error"></span>'
@@ -1711,7 +1725,7 @@ def sharp_invoke(module, function, frame):
             # template invocation
             templateTitle = fullyQualifiedTemplateTitle(function)
             if not templateTitle:
-                logging.warn("Template with empty title")
+                logging.warning("Template with empty title")
             pair = next((x for x in frame if x[0] == templateTitle), None)
             if pair:
                 params = pair[1]
@@ -1790,6 +1804,7 @@ def callParserFunction(functionName, args, frame):
             # logging.debug('parserFunction> %s(%s) %s', functionName, args, ret)
             return ret
     except:
+        #print('error in callParserFunction')
         return ""  # FIXME: fix errors
 
     return ""
@@ -1855,5 +1870,5 @@ def define_template(title, page):
 
     if text:
         if title in templates and templates[title] != text:
-            logging.warn('Redefining: %s', title)
+            logging.warning('Redefining: %s', title)
         templates[title] = text
